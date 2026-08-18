@@ -240,9 +240,14 @@
     <div class="hint">IP:port of your Lynx receiver's web interface.</div>
   </div>
   <div class="field">
-    <label>LNB LO offset (kHz)</label>
+    <label>Your LNB's local oscillator (kHz)</label>
     <input id="lnbOffset" type="number" value="9750000">
-    <div class="hint">Nominal 9750000 for a standard Ku-band LNB — adjust for your actual LNB's drift.</div>
+    <div class="hint">
+      Nominal 9750000 for a standard Ku-band LNB. If yours has drifted, put its
+      actual LO here — it is used only when tuning your receiver, to land on the
+      real signal. The spectrum display is unaffected: it comes from a receiver
+      with a locked LNB, so its frequencies are already correct.
+    </div>
 
     <label>Chat column width (px)</label>
     <input id="chatWidth" type="number" min="200" max="900" step="10" value="300">
@@ -327,6 +332,14 @@
 // ── Constants derived directly from BATC's own server source
 // (eshail-ghy-wb-fft-airspy/main.c) - not guessed. ────────────
 const FFT_SIZE = 1024;
+// The BATC wideband receiver's LNB is locked, so the spectrum it sends
+// is referenced to a known, correct LO and its frequency scale is
+// absolute. The DISPLAY must therefore use this fixed value and never
+// the local LNB setting - confirmed by G8GKQ, who reported the scale
+// sliding when the offset was changed. Only the LOCAL receiver needs
+// compensating for its own LNB's drift, and that is done at tune time.
+const SPECTRUM_LO_KHZ = 9750000;
+
 const AIRSPY_FREQ_HZ = 745000000;      // SDR's tuned IF centre
 const AIRSPY_SAMPLE_HZ = 10000000;     // total captured span
 const BIN_HZ = AIRSPY_SAMPLE_HZ / FFT_SIZE;
@@ -406,9 +419,12 @@ function toggleSettings() {
 }
 
 // ── Real downlink frequency (MHz) for a received-array index ──
+// Uses SPECTRUM_LO_KHZ, not the local LNB setting: the incoming
+// spectrum is already referenced to a locked LNB, so these are true
+// downlink frequencies and must not move when the local offset changes.
 function realFreqMhzForArrayIndex(k) {
     const ifHz = ifFreqForArrayIndex(k);
-    return (ifHz / 1000 + settings.lnbOffsetKhz) / 1000;
+    return (ifHz / 1000 + SPECTRUM_LO_KHZ) / 1000;
 }
 
 // ── Spectrum canvas ─────────────────────────────────────────
