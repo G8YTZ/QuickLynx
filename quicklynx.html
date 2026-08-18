@@ -126,7 +126,10 @@
     min-height: 0;
   }
   #chatColumn {
-    width: 300px;
+    /* Set from settings at runtime - see applyChatWidth(). 300px is a
+       sensible minimum but looks cramped on a 1920-wide display, where
+       around 600px reads much better (reported by G8GKQ). */
+    width: var(--chat-width, 300px);
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
@@ -240,6 +243,10 @@
     <label>LNB LO offset (kHz)</label>
     <input id="lnbOffset" type="number" value="9750000">
     <div class="hint">Nominal 9750000 for a standard Ku-band LNB — adjust for your actual LNB's drift.</div>
+
+    <label>Chat column width (px)</label>
+    <input id="chatWidth" type="number" min="200" max="900" step="10" value="300">
+    <div class="hint">300 suits a narrow window; around 600 reads better on a 1920-wide display.</div>
   </div>
   <div class="field">
     <label>Default tuner</label>
@@ -349,6 +356,7 @@ const DEFAULT_SETTINGS = {
     lnbOffsetKhz: 9750000,
     defaultTuner: 'a',
     wsUrl: 'wss://eshail.batc.org.uk/wb/fft',
+    chatWidthPx: 300,
 };
 let settings = Object.assign({}, DEFAULT_SETTINGS);
 
@@ -361,6 +369,17 @@ function loadSettings() {
     document.getElementById('lnbOffset').value = settings.lnbOffsetKhz;
     document.getElementById('defaultTuner').value = settings.defaultTuner;
     document.getElementById('wsUrl').value = settings.wsUrl;
+    document.getElementById('chatWidth').value = settings.chatWidthPx;
+    applyChatWidth();
+}
+
+function applyChatWidth() {
+    // Clamped rather than trusted: a stray keystroke in the settings box
+    // could otherwise leave the chat filling the window with no spectrum
+    // visible, and no obvious way back.
+    const w = Math.max(200, Math.min(900, parseInt(settings.chatWidthPx) || 300));
+    document.documentElement.style.setProperty('--chat-width', w + 'px');
+    if (typeof resizeCanvas === 'function') resizeCanvas();
 }
 
 function saveSettings() {
@@ -368,6 +387,8 @@ function saveSettings() {
     settings.lnbOffsetKhz = parseInt(document.getElementById('lnbOffset').value) || 9750000;
     settings.defaultTuner = document.getElementById('defaultTuner').value;
     settings.wsUrl = document.getElementById('wsUrl').value.trim();
+    settings.chatWidthPx = parseInt(document.getElementById('chatWidth').value) || 300;
+    applyChatWidth();
     localStorage.setItem('quicklynx-settings', JSON.stringify(settings));
     toggleSettings();
     connectFeed();
